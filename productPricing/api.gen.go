@@ -13,7 +13,7 @@ import (
 	runt "runtime"
 	"strings"
 
-	"gopkg.me/selling-partner-api-sdk/pkg/runtime"
+	"github.com/mikeshimura/mwssp/pkg/runtime"
 )
 
 // RequestBeforeFn  is the function signature for the RequestBefore callback function
@@ -292,9 +292,16 @@ func NewGetCompetitivePricingRequest(endpoint string, params *GetCompetitivePric
 			return nil, err
 		} else {
 			for k, v := range parsed {
+				vv:=""
 				for _, v2 := range v {
-					queryValues.Add(k, v2)
+					//queryValues.Add(k, v2)
+					if vv==""{
+						vv=v2
+					} else {
+						vv+=","+v2
+					}
 				}
+				queryValues.Add(k, vv)
 			}
 		}
 
