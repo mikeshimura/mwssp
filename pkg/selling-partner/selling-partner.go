@@ -37,11 +37,12 @@ type Config struct {
 	SecretKey    string //AWS IAM User Secret Key
 	Region       string //AWS Region
 	RoleArn      string //AWS IAM Role ARN
+	Scope        string //Grantless Authorization scope
 }
 
 func (o Config) IsValid() (bool, error) {
-	if o.RefreshToken == "" {
-		return false, errors.New("refresh token is required")
+	if o.RefreshToken == "" && o.Scope == "" {
+		return false, errors.New("refresh token or scope is required")
 	}
 	if o.ClientID == "" {
 		return false, errors.New("client id is required")
@@ -101,6 +102,14 @@ func (s *SellingPartner) RefreshToken() error {
 		"client_id":     s.cfg.ClientID,
 		"client_secret": s.cfg.ClientSecret,
 	})
+	if s.cfg.RefreshToken==""{
+		reqBody, _ = json.Marshal(map[string]string{
+			"grant_type":    "client_credentials",
+			"scope": s.cfg.Scope,
+			"client_id":     s.cfg.ClientID,
+			"client_secret": s.cfg.ClientSecret,
+		})
+	}
 
 	resp, err := http.Post(
 		"https://api.amazon.com/auth/o2/token",
