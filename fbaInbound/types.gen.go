@@ -6,7 +6,7 @@ package fbaInbound
 import (
 	"time"
 
-	openapi_types "gopkg.me/selling-partner-api-sdk/pkg/types"
+	openapi_types "github.com/mikeshimura/mwssp/pkg/types"
 )
 
 // ASINInboundGuidance defines model for ASINInboundGuidance.
