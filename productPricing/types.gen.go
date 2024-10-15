@@ -480,3 +480,13 @@ type GetPricingParams struct {
 	// Filters the offer listings based on item condition. Possible values: New, Used, Collectible, Refurbished, Club.
 	ItemCondition *string `json:"ItemCondition,omitempty"`
 }
+type ItemOffersRequest struct{
+	Uri string `json:"uri"`
+	Method string `json:"method"`
+	ItemCondition string `json:"ItemCondition"`
+	MarketplaceId string `json:"MarketplaceId"`
+}
+type ItemOffersRequestList []ItemOffersRequest
+type GetItemOffersBatchRequest struct{
+	Requests ItemOffersRequestList `json:"requests"`
+}

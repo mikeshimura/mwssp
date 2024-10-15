@@ -130,6 +130,8 @@ type ClientInterface interface {
 
 	// GetCatalogItem request
 	GetCatalogItem(ctx context.Context, asin string, params *GetCatalogItemParams) (*http.Response, error)
+
+	SearchCatalogItems(ctx context.Context, params *SearchCatalogItemsParams) (*http.Response, error)
 }
 
 func (c *Client) ListCatalogCategories(ctx context.Context, params *ListCatalogCategoriesParams) (*http.Response, error) {
@@ -190,8 +192,8 @@ func (c *Client) ListCatalogItems(ctx context.Context, params *ListCatalogItemsP
 	return rsp, nil
 }
 
-func (c *Client) GetCatalogItem(ctx context.Context, asin string, params *GetCatalogItemParams) (*http.Response, error) {
-	req, err := NewGetCatalogItemRequest(c.Endpoint, asin, params)
+func (c *Client) GetCatalogItem(ctx context.Context,asin string, params *GetCatalogItemParams) (*http.Response, error) {
+	req, err := NewGetCatalogItemRequest(c.Endpoint,asin, params)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +220,34 @@ func (c *Client) GetCatalogItem(ctx context.Context, asin string, params *GetCat
 	}
 	return rsp, nil
 }
+func (c *Client) SearchCatalogItems(ctx context.Context,  params *SearchCatalogItemsParams) (*http.Response, error) {
+	req, err := NewSearchCatalogItemsRequest(c.Endpoint, params)
+	if err != nil {
+		return nil, err
+	}
 
+	req = req.WithContext(ctx)
+	req.Header.Set("User-Agent", c.UserAgent)
+	if c.RequestBefore != nil {
+		err = c.RequestBefore(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	rsp, err := c.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.ResponseAfter != nil {
+		err = c.ResponseAfter(ctx, rsp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return rsp, nil
+}
 // NewListCatalogCategoriesRequest generates requests for ListCatalogCategories
 func NewListCatalogCategoriesRequest(endpoint string, params *ListCatalogCategoriesParams) (*http.Request, error) {
 	var err error
@@ -465,7 +494,7 @@ func NewGetCatalogItemRequest(endpoint string, asin string, params *GetCatalogIt
 		return nil, err
 	}
 
-	basePath := fmt.Sprintf("/catalog/2020-12-01/items/%s", pathParam0)
+	basePath := fmt.Sprintf("/catalog/2022-04-01/items/%s", pathParam0)
 	if basePath[0] == '/' {
 		basePath = basePath[1:]
 	}
@@ -498,7 +527,87 @@ func NewGetCatalogItemRequest(endpoint string, asin string, params *GetCatalogIt
 
 	return req, nil
 }
+func NewSearchCatalogItemsRequest(endpoint string,  params *SearchCatalogItemsParams) (*http.Request, error) {
+	var err error
 
+	//var pathParam0 string
+	//
+	//pathParam0, err = runtime.StyleParam("simple", false, "asin", asin)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	queryUrl, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	basePath := fmt.Sprintf("/catalog/2022-04-01/items")
+	if basePath[0] == '/' {
+		basePath = basePath[1:]
+	}
+
+	queryUrl, err = queryUrl.Parse(basePath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryUrl.Query()
+
+	if queryFrag, err := runtime.StyleParam("form", true, "marketplaceIds", params.MarketplaceId); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
+			}
+		}
+	}
+	if queryFrag, err := runtime.StyleParam("form", true, "identifiersType", params.IdentifiresType); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
+			}
+		}
+	}
+	if params.Identifires != nil {
+
+		if queryFrag, err := runtime.StyleParam("form", true, "identifiers", *params.Identifires); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				vv:=""
+				for _, v2 := range v {
+					//queryValues.Add(k, v2)
+					if vv==""{
+						vv=v2
+					} else {
+						vv+=","+v2
+					}
+				}
+				queryValues.Add(k, vv)
+			}
+		}
+
+	}
+	queryValues.Add("includedData", "attributes,dimensions,identifiers,images,productTypes,salesRanks,summaries")
+	queryUrl.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryUrl.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
 // ClientWithResponses builds on ClientInterface to offer response payloads
 type ClientWithResponses struct {
 	ClientInterface

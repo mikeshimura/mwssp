@@ -4,9 +4,11 @@
 package productPricing
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -128,6 +130,9 @@ type ClientInterface interface {
 	// GetItemOffers request
 	GetItemOffers(ctx context.Context, asin string, params *GetItemOffersParams) (*http.Response, error)
 
+	// GetItemOffers request
+	GetItemOffersBatch(ctx context.Context, body *GetItemOffersBatchRequest) (*http.Response, error)
+
 	// GetListingOffers request
 	GetListingOffers(ctx context.Context, sellerSKU string, params *GetListingOffersParams) (*http.Response, error)
 
@@ -192,7 +197,69 @@ func (c *Client) GetItemOffers(ctx context.Context, asin string, params *GetItem
 	}
 	return rsp, nil
 }
+func (c *Client) GetItemOffersBatch(ctx context.Context, body *GetItemOffersBatchRequest) (*http.Response, error){
+	req, err := NewGetItemOffersBatchRequest(c.Endpoint, body)
+	if err != nil {
+		return nil, err
+	}
 
+	req = req.WithContext(ctx)
+	req.Header.Set("User-Agent", c.UserAgent)
+	if c.RequestBefore != nil {
+		err = c.RequestBefore(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	rsp, err := c.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.ResponseAfter != nil {
+		err = c.ResponseAfter(ctx, rsp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return rsp, nil
+}
+func NewGetItemOffersBatchRequest(endpoint string, body *GetItemOffersBatchRequest) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGetItemOffersBatchRequestWithBody(endpoint, "application/json", bodyReader)
+}
+func NewGetItemOffersBatchRequestWithBody(endpoint string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	queryUrl, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	basePath := fmt.Sprintf("/batches/products/pricing/v0/itemOffers")
+	if basePath[0] == '/' {
+		basePath = basePath[1:]
+	}
+
+	queryUrl, err = queryUrl.Parse(basePath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryUrl.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+	return req, nil
+}
 func (c *Client) GetListingOffers(ctx context.Context, sellerSKU string, params *GetListingOffersParams) (*http.Response, error) {
 	req, err := NewGetListingOffersRequest(c.Endpoint, sellerSKU, params)
 	if err != nil {
